@@ -1,0 +1,11 @@
+# Python cache
+__pycache__/
+*.py[cod]
+
+# Log and result folders
+checkpoints/
+logs/
+results/
+runs/
+scripts/
+
