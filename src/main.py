@@ -12,12 +12,17 @@ if __name__ == "__main__":
     
     env_name = Config["env"]
     
+    # Simplified maze for initial training
+    simple_maze = [
+        [1, 1, 1, 1, 1],
+        [1, 0, 0, 0, 1],
+        [1, 1, 1, 1, 1]
+    ]
+    
     env = gym.make(
         env_name, 
         max_episode_steps=Config["max_episode_steps"], 
-        maze_map=[[1, 1, 1, 1, 1],
-                  [1, 0, 0, 0, 1],
-                  [1, 1, 1, 1, 1]], 
+        maze_map=simple_maze, 
         # render_mode="human"
     )
     env = RoboGymObservationWrapper(env)
@@ -42,22 +47,23 @@ if __name__ == "__main__":
                 summary_writer_name=f"maze_map={Config['alpha']}_lr={Config['learning_rate']}_hs={Config['hidden_size']}_a={Config['alpha']}_phase_1",
                 max_episode_steps= Config["max_episode_steps"])
     
-    L_map = [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-                [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1],
-                [1, 0, 1, 1, 0, 1, 0, 1, 0, 1, 0, 1],
-                [1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1],
-                [1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 0, 1],
-                [1, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1],
-                [1, 1, 0, 1, 0, 1, 0, 1, 0, 1, 1, 1],
-                [1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1],
-                [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]
+    # Simplified medium maze for second phase
+    medium_maze = [
+        [1, 1, 1, 1, 1, 1, 1, 1],
+        [1, 0, 0, 0, 0, 0, 0, 1],
+        [1, 0, 1, 1, 0, 1, 0, 1],
+        [1, 0, 0, 0, 0, 0, 0, 1],
+        [1, 0, 1, 1, 1, 1, 0, 1],
+        [1, 0, 0, 0, 0, 0, 0, 1],
+        [1, 1, 1, 1, 1, 1, 1, 1]
+    ]
     
     max_episode_steps_phase_2 = 500 
     
     env = gym.make(
         env_name, 
         max_episode_steps= max_episode_steps_phase_2, 
-        maze_map=L_map
+        maze_map=medium_maze
         # render_mode="human"
     )
     env = RoboGymObservationWrapper(env)

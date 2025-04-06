@@ -14,6 +14,20 @@ def weights_init(m):
         torch.nn.init.xavier_uniform_(m.weight, gain=1)
         torch.nn.init.constant_(m.bias, 0)
 
+class ResidualBlock(nn.Module):
+    def __init__(self, hidden_dim):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.LayerNorm(hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.LayerNorm(hidden_dim)
+        )
+        
+    def forward(self, x):
+        return F.relu(x + self.net(x))
+
 class Critic(nn.Module):
     def __init__(self, num_inputs, num_actions, hidden_dim, checkpoint_dir='checkpoints', name="critic_network"):
         super().__init__()
@@ -22,17 +36,19 @@ class Critic(nn.Module):
         
         self.q1 = nn.Sequential(
             nn.Linear(num_inputs + num_actions, hidden_dim),
+            nn.LayerNorm(hidden_dim),
             nn.ReLU(),
-            nn.Linear(hidden_dim, hidden_dim),
-            nn.ReLU(),
+            ResidualBlock(hidden_dim),
+            ResidualBlock(hidden_dim),
             nn.Linear(hidden_dim, 1)
         )
 
         self.q2 = nn.Sequential(
             nn.Linear(num_inputs + num_actions, hidden_dim),
+            nn.LayerNorm(hidden_dim),
             nn.ReLU(),
-            nn.Linear(hidden_dim, hidden_dim),
-            nn.ReLU(),
+            ResidualBlock(hidden_dim),
+            ResidualBlock(hidden_dim),
             nn.Linear(hidden_dim, 1)
         )
 
@@ -71,9 +87,10 @@ class Actor(nn.Module):
 
         self.net = nn.Sequential(
             nn.Linear(num_inputs, hidden_dim),
+            nn.LayerNorm(hidden_dim),
             nn.ReLU(),
-            nn.Linear(hidden_dim, hidden_dim),
-            nn.ReLU()
+            ResidualBlock(hidden_dim),
+            ResidualBlock(hidden_dim)
         )
 
         self.mean_linear = nn.Linear(hidden_dim, num_actions)
@@ -140,9 +157,10 @@ class PredictiveModel(nn.Module):
 
         self.model = nn.Sequential(
             nn.Linear(num_inputs + num_actions, hidden_dim),
+            nn.LayerNorm(hidden_dim),
             nn.ReLU(),
-            nn.Linear(hidden_dim, hidden_dim),
-            nn.ReLU(),
+            ResidualBlock(hidden_dim),
+            ResidualBlock(hidden_dim),
             nn.Linear(hidden_dim, num_inputs)
         )
 

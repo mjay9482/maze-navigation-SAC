@@ -12,19 +12,22 @@ if __name__ == "__main__":
     
     env_name = Config["env"]
     
+    # Simplified maze map - smaller and less complex
+    simplified_maze = [
+        [1, 1, 1, 1, 1, 1, 1, 1],
+        [1, 0, 0, 0, 0, 0, 0, 1],
+        [1, 0, 1, 1, 0, 1, 0, 1],
+        [1, 0, 0, 0, 0, 0, 0, 1],
+        [1, 0, 1, 1, 1, 1, 0, 1],
+        [1, 0, 0, 0, 0, 0, 0, 1],
+        [1, 1, 1, 1, 1, 1, 1, 1]
+    ]
+    
     env = gym.make(
         env_name, 
         max_episode_steps=Config["max_episode_steps"], 
         render_mode="human",
-        maze_map=[[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-                [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1],
-                [1, 0, 1, 1, 0, 1, 0, 1, 0, 1, 0, 1],
-                [1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1],
-                [1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 0, 1],
-                [1, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1],
-                [1, 1, 0, 1, 0, 1, 0, 1, 0, 1, 1, 1],
-                [1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1],
-                [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]])
+        maze_map=simplified_maze)
 
     env = RoboGymObservationWrapper(env)
     

@@ -7,6 +7,8 @@ from torch.optim import Adam
 from replay_buffer import ReplayBuffer
 from torch.utils.tensorboard import SummaryWriter
 import datetime
+import json
+import numpy as np
 
 def hard_update(target, source):
     for target_param, param in zip(target.parameters(), source.parameters()):
@@ -116,12 +118,35 @@ class Agent:
     def train(self, env, env_name, memory, episodes=1000, batch_size=64, updates_per_step=1, summary_writer_name="", max_episode_steps=100):
     
         warmup = Config["warmup"]
-        #Tensorboard
-        summary_writer_name= f'runs/{datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}_' + summary_writer_name
+        
+        # Create logs directory if it doesn't exist
+        log_dir = 'logs'
+        if not os.path.exists(log_dir):
+            os.makedirs(log_dir)
+            
+        # Create a unique run ID
+        run_id = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        
+        # Setup TensorBoard
+        summary_writer_name = f'runs/{run_id}_{summary_writer_name}'
         writer = SummaryWriter(summary_writer_name)
+        
+        # Initialize metrics storage
+        metrics = {
+            'episode_rewards': [],
+            'episode_steps': [],
+            'critic_losses': [],
+            'policy_losses': [],
+            'entropy_losses': [],
+            'prediction_losses': [],
+            'alpha_values': [],
+            'success_rate': []
+        }
+        
         #training loop
         total_numsteps = 0
         updates = 0 
+        successful_episodes = 0
         
         for episode in range(episodes):
             episode_reward = 0
@@ -136,33 +161,74 @@ class Agent:
                     action = self.select_action(state)
                 
                 if memory.can_sample(batch_size = batch_size):
+                    critic_1_loss, critic_2_loss, policy_loss, ent_loss, prediction_loss, alpha = self.update_parameters(memory, batch_size, updates)
                     
-                       critic_1_loss, critic_2_loss, policy_loss, ent_loss, prediction_loss,  alpha = self.update_parameters(memory, batch_size, updates)
-                       
-                       writer.add_scalar('loss/critic_1', critic_1_loss, updates)
-                       writer.add_scalar('loss/critic_2', critic_1_loss, updates)
-                       writer.add_scalar('loss/policy', policy, updates)
-                       writer.add_scalar('loss/entropy', entropy, updates)
-                       writer.add_scalar('loss/prediction_loss', prediction_loss, updates)
-                       writer.add_scalar('parameters/alpha', alpha, updates)
-                       updates += 1
+                    # Store losses
+                    metrics['critic_losses'].append((critic_1_loss + critic_2_loss) / 2)
+                    metrics['policy_losses'].append(policy_loss)
+                    metrics['entropy_losses'].append(ent_loss)
+                    metrics['prediction_losses'].append(prediction_loss)
+                    metrics['alpha_values'].append(alpha)
+                    
+                    # Log to TensorBoard
+                    writer.add_scalar('loss/critic_1', critic_1_loss, updates)
+                    writer.add_scalar('loss/critic_2', critic_2_loss, updates)
+                    writer.add_scalar('loss/policy', policy_loss, updates)
+                    writer.add_scalar('loss/entropy', ent_loss, updates)
+                    writer.add_scalar('loss/prediction_loss', prediction_loss, updates)
+                    writer.add_scalar('parameters/alpha', alpha, updates)
+                    updates += 1
 
-                next_state, reward, done, _, _ = env.step(action)
+                next_state, reward, done, _, info = env.step(action)
                 
                 episode_steps += 1
                 total_numsteps += 1
                 episode_reward += reward 
                 
                 mask = 1 if episode_steps == max_episode_steps else float(not done)
-                
                 state = next_state
             
-            writer.add_scalar('reward/train', episode_reward, episode)
-            print(f"Episode: {episode}, total_numsteps: {total_numsteps},episode_steps: {episode_steps}, reward :{round(episode_reward,2)}")
+            # Store episode metrics
+            metrics['episode_rewards'].append(episode_reward)
+            metrics['episode_steps'].append(episode_steps)
             
+            # Check if episode was successful (assuming reward of 1.0 indicates success)
+            if episode_reward >= 1.0:
+                successful_episodes += 1
+            metrics['success_rate'].append(successful_episodes / (episode + 1))
+            
+            # Log episode metrics to TensorBoard
+            writer.add_scalar('reward/train', episode_reward, episode)
+            writer.add_scalar('steps/episode', episode_steps, episode)
+            writer.add_scalar('success_rate', metrics['success_rate'][-1], episode)
+            
+            # Save metrics to file every 10 episodes
             if episode % 10 == 0:
+                metrics_file = os.path.join(log_dir, f'metrics_{run_id}.json')
+                with open(metrics_file, 'w') as f:
+                    json.dump(metrics, f)
+                
+                # Save model checkpoint
                 self.save_checkpoint()
-       
+                
+                # Print progress
+                print(f"Episode: {episode}")
+                print(f"Total steps: {total_numsteps}")
+                print(f"Episode steps: {episode_steps}")
+                print(f"Episode reward: {round(episode_reward, 2)}")
+                print(f"Success rate: {round(metrics['success_rate'][-1] * 100, 2)}%")
+                print(f"Average reward (last 10): {round(np.mean(metrics['episode_rewards'][-10:]), 2)}")
+                print("----------------------------------------")
+        
+        # Save final metrics
+        metrics_file = os.path.join(log_dir, f'metrics_{run_id}_final.json')
+        with open(metrics_file, 'w') as f:
+            json.dump(metrics, f)
+            
+        writer.close()
+        
+        return metrics
+    
     def test(self, env, episodes=10, max_episode_steps=500):
         
         for episode in range(episodes):

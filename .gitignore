@@ -5,7 +5,4 @@ __pycache__/
 # Log and result folders
 checkpoints/
 logs/
-results/
 runs/
-scripts/
-
